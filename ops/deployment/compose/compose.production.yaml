@@ -114,7 +114,23 @@ services:
         done &&
         if [[ -f "sites/$${SITE_NAME}/site_config.json" ]] || bench list-sites | grep -Fxq "$${SITE_NAME}"; then
           echo "Site $${SITE_NAME} already exists";
-          /home/frappe/frappe-bench/env/bin/python /home/frappe/frappe-bench/apps/education/education/deployment/ensure_site_database_principal.py;
+          /home/frappe/frappe-bench/env/bin/python /home/frappe/frappe-bench/apps/education/education/deployment/ensure_site_database_principal.py --check-initialized;
+          principal_state=$$?;
+          if [[ "$$principal_state" -eq 10 ]]; then
+            echo "Site $${SITE_NAME} exists but core Frappe tables are missing. Rebuilding site bootstrap.";
+            bench new-site "$${SITE_NAME}" \
+              --force \
+              --mariadb-user-host-login-scope='%' \
+              --admin-password="$${ADMIN_PASSWORD}" \
+              --db-root-username="$${DB_ROOT_USER}" \
+              --db-root-password="$${DB_ROOT_PASSWORD}" \
+              --db-name "$${SITE_DB_NAME}" \
+              --db-password "$${SITE_DB_PASSWORD}" \
+              --install-app erpnext \
+              --set-default;
+          elif [[ "$$principal_state" -ne 0 ]]; then
+            exit "$$principal_state";
+          fi;
         else
           bench new-site "$${SITE_NAME}" \
             --mariadb-user-host-login-scope='%' \
