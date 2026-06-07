@@ -1,0 +1,17 @@
+ARG BASE_IMAGE=frappe/erpnext
+ARG BASE_TAG=develop
+
+FROM ${BASE_IMAGE}:${BASE_TAG}
+
+USER root
+COPY --chown=frappe:frappe . /home/frappe/frappe-bench/apps/education
+
+USER frappe
+WORKDIR /home/frappe/frappe-bench
+
+RUN /home/frappe/frappe-bench/env/bin/pip install --no-cache-dir /home/frappe/frappe-bench/apps/education && \
+	cd /home/frappe/frappe-bench/apps/education && \
+	yarn install --frozen-lockfile && \
+	yarn build && \
+	bench build --app education && \
+	rm -rf /home/frappe/frappe-bench/apps/education/node_modules /home/frappe/frappe-bench/apps/education/frontend/node_modules

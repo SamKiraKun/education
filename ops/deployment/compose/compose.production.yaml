@@ -1,0 +1,250 @@
+services:
+  db:
+    image: ${MARIADB_IMAGE}
+    platform: ${TARGET_PLATFORM}
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      - frappe
+
+  redis-cache:
+    image: ${REDIS_IMAGE}
+    platform: ${TARGET_PLATFORM}
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redis-cache-data:/data
+    networks:
+      - frappe
+
+  redis-queue:
+    image: ${REDIS_IMAGE}
+    platform: ${TARGET_PLATFORM}
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redis-queue-data:/data
+    networks:
+      - frappe
+
+  configurator:
+    image: ${CUSTOM_IMAGE}:${CUSTOM_TAG}
+    platform: ${TARGET_PLATFORM}
+    pull_policy: never
+    restart: on-failure
+    entrypoint: ["bash", "-lc"]
+    command: >
+      ls -1 apps > sites/apps.txt &&
+      bench set-config -g db_host ${DB_HOST} &&
+      bench set-config -gp db_port ${DB_PORT} &&
+      bench set-config -g redis_cache "redis://${REDIS_CACHE}" &&
+      bench set-config -g redis_queue "redis://${REDIS_QUEUE}" &&
+      bench set-config -g redis_socketio "redis://${REDIS_QUEUE}" &&
+      bench set-config -gp socketio_port ${SOCKETIO_PORT}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis-cache:
+        condition: service_started
+      redis-queue:
+        condition: service_started
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+    networks:
+      - frappe
+
+  create-site:
+    image: ${CUSTOM_IMAGE}:${CUSTOM_TAG}
+    platform: ${TARGET_PLATFORM}
+    pull_policy: never
+    restart: "no"
+    entrypoint: ["bash", "-lc"]
+    command: >
+      wait-for-it -t 120 ${DB_HOST}:${DB_PORT} &&
+      wait-for-it -t 120 ${REDIS_CACHE} &&
+      wait-for-it -t 120 ${REDIS_QUEUE} &&
+      export start=$$(date +%s) &&
+      until [[ -n $$(grep -hs ^ sites/common_site_config.json | jq -r ".db_host // empty") ]] &&
+            [[ -n $$(grep -hs ^ sites/common_site_config.json | jq -r ".redis_cache // empty") ]] &&
+            [[ -n $$(grep -hs ^ sites/common_site_config.json | jq -r ".redis_queue // empty") ]];
+      do
+        echo "Waiting for sites/common_site_config.json to be ready";
+        sleep 5;
+        if (( $$(date +%s) - start > 120 )); then
+          echo "Timed out waiting for sites/common_site_config.json";
+          exit 1;
+        fi;
+      done &&
+      if bench list-sites | grep -Fxq "${SITE_NAME}"; then
+        echo "Site ${SITE_NAME} already exists";
+        exit 0;
+      fi &&
+      bench new-site "${SITE_NAME}" \
+        --mariadb-user-host-login-scope='%' \
+        --admin-password="${ADMIN_PASSWORD}" \
+        --db-root-username="${DB_ROOT_USER}" \
+        --db-root-password="${DB_ROOT_PASSWORD}" \
+        --db-name "${SITE_DB_NAME}" \
+        --db-password "${SITE_DB_PASSWORD}" \
+        --install-app erpnext \
+        --set-default &&
+      bench --site "${SITE_NAME}" install-app education &&
+      bench --site "${SITE_NAME}" set-config host_name "https://${DOMAIN}" &&
+      bench --site "${SITE_NAME}" enable-scheduler &&
+      bench --site "${SITE_NAME}" clear-cache
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+    networks:
+      - frappe
+
+  migrate:
+    image: ${CUSTOM_IMAGE}:${CUSTOM_TAG}
+    platform: ${TARGET_PLATFORM}
+    pull_policy: never
+    restart: "no"
+    entrypoint: ["bash", "-lc"]
+    command: >
+      bench --site "${SITE_NAME}" migrate &&
+      bench --site "${SITE_NAME}" clear-cache
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+    networks:
+      - frappe
+
+  backend:
+    image: ${CUSTOM_IMAGE}:${CUSTOM_TAG}
+    platform: ${TARGET_PLATFORM}
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      GUNICORN_THREADS: ${GUNICORN_THREADS}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS}
+      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT}
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+    networks:
+      - frappe
+
+  websocket:
+    image: ${CUSTOM_IMAGE}:${CUSTOM_TAG}
+    platform: ${TARGET_PLATFORM}
+    pull_policy: never
+    restart: unless-stopped
+    command: ["node", "/home/frappe/frappe-bench/apps/frappe/socketio.js"]
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+    networks:
+      - frappe
+
+  queue-short:
+    image: ${CUSTOM_IMAGE}:${CUSTOM_TAG}
+    platform: ${TARGET_PLATFORM}
+    pull_policy: never
+    restart: unless-stopped
+    command: ["bench", "worker", "--queue", "short,default"]
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+    networks:
+      - frappe
+
+  queue-long:
+    image: ${CUSTOM_IMAGE}:${CUSTOM_TAG}
+    platform: ${TARGET_PLATFORM}
+    pull_policy: never
+    restart: unless-stopped
+    command: ["bench", "worker", "--queue", "long,default,short"]
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+    networks:
+      - frappe
+
+  scheduler:
+    image: ${CUSTOM_IMAGE}:${CUSTOM_TAG}
+    platform: ${TARGET_PLATFORM}
+    pull_policy: never
+    restart: unless-stopped
+    command: ["bench", "schedule"]
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+    networks:
+      - frappe
+
+  frontend:
+    image: ${CUSTOM_IMAGE}:${CUSTOM_TAG}
+    platform: ${TARGET_PLATFORM}
+    pull_policy: never
+    restart: unless-stopped
+    command: ["nginx-entrypoint.sh"]
+    depends_on:
+      websocket:
+        condition: service_started
+    environment:
+      BACKEND: backend:8000
+      SOCKETIO: websocket:9000
+      FRAPPE_SITE_NAME_HEADER: ${SITE_NAME}
+      UPSTREAM_REAL_IP_ADDRESS: ${UPSTREAM_REAL_IP_ADDRESS}
+      UPSTREAM_REAL_IP_HEADER: ${UPSTREAM_REAL_IP_HEADER}
+      UPSTREAM_REAL_IP_RECURSIVE: ${UPSTREAM_REAL_IP_RECURSIVE}
+      PROXY_READ_TIMEOUT: ${GUNICORN_TIMEOUT}
+      CLIENT_MAX_BODY_SIZE: ${CLIENT_MAX_BODY_SIZE}
+    ports:
+      - "127.0.0.1:${FRAPPE_HTTP_PORT}:8080"
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+    networks:
+      - frappe
+
+volumes:
+  db-data:
+  logs:
+  redis-cache-data:
+  redis-queue-data:
+  sites:
+
+networks:
+  frappe:
+    driver: bridge

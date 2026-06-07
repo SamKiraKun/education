@@ -11,3 +11,10 @@ education/public/frontend
 education/www/education.html
 education/www/student-portal.html
 ./node_modules
+.deploy/
+ops/deployment/.env
+ops/deployment/.env.production
+ops/deployment/.env.*
+!ops/deployment/.env.production.example
+ops/mariadb-cloud-replication/.env
+restore-reports/

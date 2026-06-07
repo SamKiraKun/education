@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Frappe Education backups on schedule
+
+[Timer]
+OnCalendar=__BACKUP_ON_CALENDAR__
+Persistent=true
+Unit=education-backup.service
+
+[Install]
+WantedBy=timers.target

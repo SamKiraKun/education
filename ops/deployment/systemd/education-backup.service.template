@@ -1,0 +1,12 @@
+[Unit]
+Description=Frappe Education backup job
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=__PROJECT_ROOT__
+Environment=EDUCATION_ENV_FILE=__SERVER_ENV_FILE__
+ExecStart=__PROJECT_ROOT__/backup.sh --scheduled
+User=root
+Group=root

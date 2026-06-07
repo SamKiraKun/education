@@ -1,0 +1,16 @@
+.git
+.github
+.deploy
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+dist
+node_modules
+frontend/node_modules
+education/public/frontend
+education/www/student-portal.html
+ops/deployment/.env
+ops/deployment/.env.production
+ops/mariadb-cloud-replication/.env
