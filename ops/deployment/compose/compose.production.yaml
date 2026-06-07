@@ -112,20 +112,25 @@ services:
             exit 1;
           fi;
         done &&
-        if bench list-sites | grep -Fxq "$${SITE_NAME}"; then
+        if [[ -f "sites/$${SITE_NAME}/site_config.json" ]] || bench list-sites | grep -Fxq "$${SITE_NAME}"; then
           echo "Site $${SITE_NAME} already exists";
-          exit 0;
+        else
+          bench new-site "$${SITE_NAME}" \
+            --mariadb-user-host-login-scope='%' \
+            --admin-password="$${ADMIN_PASSWORD}" \
+            --db-root-username="$${DB_ROOT_USER}" \
+            --db-root-password="$${DB_ROOT_PASSWORD}" \
+            --db-name "$${SITE_DB_NAME}" \
+            --db-password "$${SITE_DB_PASSWORD}" \
+            --install-app erpnext \
+            --set-default;
         fi &&
-        bench new-site "$${SITE_NAME}" \
-          --mariadb-user-host-login-scope='%' \
-          --admin-password="$${ADMIN_PASSWORD}" \
-          --db-root-username="$${DB_ROOT_USER}" \
-          --db-root-password="$${DB_ROOT_PASSWORD}" \
-          --db-name "$${SITE_DB_NAME}" \
-          --db-password "$${SITE_DB_PASSWORD}" \
-          --install-app erpnext \
-          --set-default &&
-        bench --site "$${SITE_NAME}" install-app education &&
+        if ! bench --site "$${SITE_NAME}" list-apps | grep -Fxq "erpnext"; then
+          bench --site "$${SITE_NAME}" install-app erpnext;
+        fi &&
+        if ! bench --site "$${SITE_NAME}" list-apps | grep -Fxq "education"; then
+          bench --site "$${SITE_NAME}" install-app education;
+        fi &&
         bench --site "$${SITE_NAME}" set-config host_name "https://$${DOMAIN}" &&
         bench --site "$${SITE_NAME}" enable-scheduler &&
         bench --site "$${SITE_NAME}" clear-cache

@@ -32,11 +32,7 @@ build_release_image "${release_tag}"
 write_release_env "${RELEASE_ENV_FILE}" "${release_tag}" "${release_sha}" "${APP_BRANCH}"
 
 compose_up_core
-if ! site_exists; then
-	run_site_creation
-else
-	log "Site ${SITE_NAME} already exists"
-fi
+run_site_creation
 compose_up_application
 run_site_migration
 
