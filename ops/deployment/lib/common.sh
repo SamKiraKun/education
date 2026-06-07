@@ -230,6 +230,10 @@ validate_deployment_env() {
 	validate_password_strength "SITE_DB_PASSWORD" "${SITE_DB_PASSWORD}"
 	validate_password_strength "ADMIN_PASSWORD" "${ADMIN_PASSWORD}"
 
+	if [[ "${DB_HOST}" == "db" && "${DB_ROOT_USER}" != "root" ]]; then
+		die "DB_ROOT_USER must be 'root' when DB_HOST=db. The bundled MariaDB container provisions the root account only; MariaDB Cloud credentials belong in ops/mariadb-cloud-replication/.env, not the deployment env."
+	fi
+
 	if bool_true "${ENABLE_LETSENCRYPT}"; then
 		[[ -n "${LETSENCRYPT_EMAIL}" ]] || die "LETSENCRYPT_EMAIL is required when ENABLE_LETSENCRYPT=true"
 		[[ "${LETSENCRYPT_EMAIL}" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] || die "Invalid LETSENCRYPT_EMAIL value."

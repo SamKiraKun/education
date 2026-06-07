@@ -70,7 +70,7 @@ The deployment env file defines the primary MariaDB settings used by the stack:
 | `DB_PORT` | MariaDB port used by Frappe containers | Defaults to `3306` |
 | `SITE_DB_NAME` | Database schema name created for the Frappe site | Safe to change only before first deploy |
 | `SITE_DB_PASSWORD` | Password stored in the site config for the Frappe site database | Secret, requires restart and usually a site config update |
-| `DB_ROOT_USER` | MariaDB administrative user for site bootstrap and restore | Defaults to `root` |
+| `DB_ROOT_USER` | MariaDB administrative user for site bootstrap and restore | Use `root` for the bundled `db` container |
 | `DB_ROOT_PASSWORD` | MariaDB administrative password for bootstrap, migration, and restore operations | Secret, rotate carefully |
 
 About `DB_USER`:
@@ -78,6 +78,10 @@ About `DB_USER`:
 Frappe manages the site database user during `bench new-site`. In this workflow
 the effective site DB user follows the site database created by Frappe, so the
 operator mainly controls `SITE_DB_NAME` and `SITE_DB_PASSWORD`.
+
+Important: when `DB_HOST=db`, `DB_ROOT_USER` must stay `root`. Do not reuse the
+MariaDB Cloud username from `ops/mariadb-cloud-replication/.env` in the
+deployment env file.
 
 ## Application Variables
 
