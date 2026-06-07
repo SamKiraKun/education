@@ -83,6 +83,23 @@ resolve_env_file() {
 	die "Missing deployment env file. Copy ops/deployment/env.production.example to ops/deployment/.env.production."
 }
 
+stream_file_contents() {
+	local file_path="$1"
+	[[ -f "${file_path}" ]] || die "File not found: ${file_path}"
+
+	if [[ -r "${file_path}" ]]; then
+		cat "${file_path}"
+		return
+	fi
+
+	if command_exists sudo; then
+		sudo cat "${file_path}"
+		return
+	fi
+
+	die "Cannot read ${file_path}. Re-run with a readable env file or install sudo access."
+}
+
 load_env_assignment_file() {
 	local env_file="$1"
 	local line key raw_value value
@@ -113,7 +130,7 @@ load_env_assignment_file() {
 
 		printf -v "${key}" '%s' "${value}"
 		export "${key}"
-	done < "${env_file}"
+	done < <(stream_file_contents "${env_file}")
 }
 
 default_db_name() {
@@ -436,7 +453,7 @@ release_value() {
 	local file="$1"
 	local key="$2"
 	[[ -f "${file}" ]] || return 1
-	grep -E "^${key}=" "${file}" | tail -n 1 | cut -d= -f2-
+	stream_file_contents "${file}" | grep -E "^${key}=" | tail -n 1 | cut -d= -f2-
 }
 
 current_release_tag() {
