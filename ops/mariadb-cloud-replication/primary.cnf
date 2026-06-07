@@ -1,0 +1,15 @@
+# Add these settings to the EC2 MariaDB primary server config.
+# On Ubuntu this is usually a file under /etc/mysql/mariadb.conf.d/.
+
+[mariadb]
+server_id=1001
+log_bin=mariadb-bin
+binlog_format=ROW
+binlog_row_image=FULL
+gtid_strict_mode=ON
+log_slave_updates=ON
+expire_logs_days=7
+
+# Bind to the network interface MariaDB Cloud can reach.
+# Prefer a private connectivity path when available.
+# bind-address=0.0.0.0

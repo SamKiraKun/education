@@ -1,0 +1,15 @@
+[Unit]
+Description=Frappe Education MariaDB Cloud replication healthcheck
+Documentation=../../ops/mariadb-cloud-replication/README.md
+
+[Service]
+Type=oneshot
+User=frappe
+Group=frappe
+WorkingDirectory=/opt/frappe/education
+EnvironmentFile=/etc/education/mariadb-cloud-replication.env
+ExecStart=/usr/bin/python3 /opt/frappe/education/ops/mariadb-cloud-replication/replication_healthcheck.py
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict

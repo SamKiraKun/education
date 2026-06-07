@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Frappe Education MariaDB Cloud replication healthcheck
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=15s
+Unit=education-replication-healthcheck.service
+
+[Install]
+WantedBy=timers.target
