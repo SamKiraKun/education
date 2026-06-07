@@ -10,6 +10,7 @@ dist
 node_modules
 frontend/node_modules
 education/public/frontend
+education/public/node_modules
 education/www/student-portal.html
 ops/deployment/.env
 ops/deployment/.env.production

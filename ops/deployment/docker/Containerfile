@@ -6,6 +6,13 @@ FROM ${BASE_IMAGE}:${BASE_TAG}
 USER root
 COPY --chown=frappe:frappe . /home/frappe/frappe-bench/apps/education
 
+# The repo tracks `education/public/node_modules` as a symlink to a developer-
+# specific absolute path. That path does not exist inside the container, and
+# flit resolves it while building the wheel. Replace it with an empty directory
+# before Python packaging, then let the frontend build repopulate real assets.
+RUN rm -f /home/frappe/frappe-bench/apps/education/education/public/node_modules && \
+	mkdir -p /home/frappe/frappe-bench/apps/education/education/public/node_modules
+
 USER frappe
 WORKDIR /home/frappe/frappe-bench
 
