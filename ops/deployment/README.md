@@ -57,6 +57,8 @@ Validate it before startup:
 
 `./deploy.sh` copies the validated file to `/etc/education/education.env` with
 restricted permissions and all runtime commands reuse that server-side file.
+The loader accepts standard `KEY=VALUE` lines and also supports quoted values
+when a setting contains spaces.
 
 ## Database Variables
 
@@ -95,7 +97,7 @@ Core variables from [env.production.example](D:/cloned projects/frappe ERP/educa
 | `LETSENCRYPT_EMAIL` | Contact email for certificate issuance | `admin@example.com` | Nginx reload / deploy |
 | `BACKUP_ROOT` | Host path for manual and scheduled backups | `/opt/education/backups` | No |
 | `BACKUP_RETENTION_DAYS` | Retention window for old backup directories | `14` | No |
-| `BACKUP_ON_CALENDAR` | Systemd timer schedule | `*-*-* 03:30:00` | Timer reinstall |
+| `BACKUP_ON_CALENDAR` | Systemd timer schedule | `"*-*-* 03:30:00"` | Timer reinstall |
 
 Security rules:
 

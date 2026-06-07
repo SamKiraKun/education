@@ -83,6 +83,39 @@ resolve_env_file() {
 	die "Missing deployment env file. Copy ops/deployment/env.production.example to ops/deployment/.env.production."
 }
 
+load_env_assignment_file() {
+	local env_file="$1"
+	local line key raw_value value
+
+	while IFS= read -r line || [[ -n "${line}" ]]; do
+		line="${line%$'\r'}"
+		line="${line#"${line%%[![:space:]]*}"}"
+		[[ -z "${line}" || "${line}" == \#* ]] && continue
+
+		if [[ "${line}" == export\ * ]]; then
+			line="${line#export }"
+		fi
+
+		[[ "${line}" == *"="* ]] || die "Invalid environment line in ${env_file}: ${line}"
+
+		key="${line%%=*}"
+		raw_value="${line#*=}"
+		key="${key%"${key##*[![:space:]]}"}"
+		key="${key#"${key%%[![:space:]]*}"}"
+		[[ "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || die "Invalid environment variable name in ${env_file}: ${key}"
+
+		value="${raw_value}"
+		if [[ "${value}" == \"*\" && "${value}" == *\" ]]; then
+			value="${value:1:-1}"
+		elif [[ "${value}" == \'*\' && "${value}" == *\' ]]; then
+			value="${value:1:-1}"
+		fi
+
+		printf -v "${key}" '%s' "${value}"
+		export "${key}"
+	done < "${env_file}"
+}
+
 default_db_name() {
 	local slug
 	slug="${APP_NAME:-education}_prod"
@@ -91,10 +124,7 @@ default_db_name() {
 
 load_deployment_env() {
 	DEPLOY_ENV_FILE="$(resolve_env_file)"
-	set -a
-	# shellcheck disable=SC1090
-	source "${DEPLOY_ENV_FILE}"
-	set +a
+	load_env_assignment_file "${DEPLOY_ENV_FILE}"
 
 	export APP_NAME="${APP_NAME:-education}"
 	export APP_BRANCH="${APP_BRANCH:-$(git -C "${PROJECT_ROOT}" branch --show-current 2>/dev/null || printf 'develop')}"
