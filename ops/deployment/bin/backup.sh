@@ -4,6 +4,7 @@ set -Eeuo pipefail
 BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../lib/common.sh
 source "${BIN_DIR}/../lib/common.sh"
+init_sudo
 
 label=""
 
