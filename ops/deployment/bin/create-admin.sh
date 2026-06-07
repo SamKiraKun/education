@@ -59,9 +59,9 @@ export BOOTSTRAP_ADMIN_FULL_NAME="${admin_full_name}"
 export BOOTSTRAP_ADMIN_PASSWORD="${admin_password}"
 
 docker_compose exec -T \
-	-e BOOTSTRAP_ADMIN_EMAIL \
-	-e BOOTSTRAP_ADMIN_FULL_NAME \
-	-e BOOTSTRAP_ADMIN_PASSWORD \
+	-e "BOOTSTRAP_ADMIN_EMAIL=${BOOTSTRAP_ADMIN_EMAIL}" \
+	-e "BOOTSTRAP_ADMIN_FULL_NAME=${BOOTSTRAP_ADMIN_FULL_NAME}" \
+	-e "BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD}" \
 	backend \
 	bench --site "${SITE_NAME}" execute education.deployment.admin_bootstrap.create_first_admin
 
