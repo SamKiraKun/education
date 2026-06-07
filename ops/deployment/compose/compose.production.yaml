@@ -75,9 +75,9 @@ services:
     restart: "no"
     entrypoint: ["bash", "-lc"]
     command: >
-      wait-for-it -t 120 ${DB_HOST}:${DB_PORT} &&
-      wait-for-it -t 120 ${REDIS_CACHE} &&
-      wait-for-it -t 120 ${REDIS_QUEUE} &&
+      wait-for-it "${DB_HOST}:${DB_PORT}" -t 120 &&
+      wait-for-it "${REDIS_CACHE}" -t 120 &&
+      wait-for-it "${REDIS_QUEUE}" -t 120 &&
       export start=$$(date +%s) &&
       until [[ -n $$(grep -hs ^ sites/common_site_config.json | jq -r ".db_host // empty") ]] &&
             [[ -n $$(grep -hs ^ sites/common_site_config.json | jq -r ".redis_cache // empty") ]] &&
