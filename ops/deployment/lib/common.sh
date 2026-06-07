@@ -85,19 +85,23 @@ resolve_env_file() {
 
 stream_file_contents() {
 	local file_path="$1"
-	[[ -f "${file_path}" ]] || die "File not found: ${file_path}"
-
 	if [[ -r "${file_path}" ]]; then
 		cat "${file_path}"
 		return
 	fi
 
 	if command_exists sudo; then
-		sudo cat "${file_path}"
-		return
+		if sudo test -f "${file_path}"; then
+			sudo cat "${file_path}"
+			return
+		fi
 	fi
 
-	die "Cannot read ${file_path}. Re-run with a readable env file or install sudo access."
+	if [[ -e "${file_path}" ]] || (command_exists sudo && sudo test -e "${file_path}" 2>/dev/null); then
+		die "Cannot read ${file_path}. Re-run with sudo or fix permissions."
+	fi
+
+	die "File not found: ${file_path}"
 }
 
 load_env_assignment_file() {
