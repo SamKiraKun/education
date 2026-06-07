@@ -114,6 +114,7 @@ services:
         done &&
         if [[ -f "sites/$${SITE_NAME}/site_config.json" ]] || bench list-sites | grep -Fxq "$${SITE_NAME}"; then
           echo "Site $${SITE_NAME} already exists";
+          /home/frappe/frappe-bench/env/bin/python /home/frappe/frappe-bench/apps/education/education/deployment/ensure_site_database_principal.py;
         else
           bench new-site "$${SITE_NAME}" \
             --mariadb-user-host-login-scope='%' \
