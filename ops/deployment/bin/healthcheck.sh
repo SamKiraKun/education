@@ -40,6 +40,6 @@ done
 
 curl -fsS -H "Host: ${DOMAIN}" "${DEPLOY_HTTP_HEALTH_URL}/api/method/ping" >/dev/null || die "API health check failed."
 curl -fsS -H "Host: ${DOMAIN}" "${DEPLOY_HTTP_HEALTH_URL}/" >/dev/null || die "Frontend health check failed."
-docker_compose exec -T backend bash -lc "bench --site '${SITE_NAME}' list-apps | grep -Fxq 'education'" >/dev/null || die "Education app is not installed on ${SITE_NAME}."
+docker_compose exec -T backend bash -lc "bench --site '${SITE_NAME}' list-apps | awk '{print \$1}' | grep -Fxq 'education'" >/dev/null || die "Education app is not installed on ${SITE_NAME}."
 
 log "Health checks passed for ${SITE_NAME}"

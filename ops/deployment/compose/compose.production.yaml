@@ -142,10 +142,10 @@ services:
             --install-app erpnext \
             --set-default;
         fi &&
-        if ! bench --site "$${SITE_NAME}" list-apps | grep -Fxq "erpnext"; then
+        if ! bench --site "$${SITE_NAME}" list-apps | awk '{print $$1}' | grep -Fxq "erpnext"; then
           bench --site "$${SITE_NAME}" install-app erpnext;
         fi &&
-        if ! bench --site "$${SITE_NAME}" list-apps | grep -Fxq "education"; then
+        if ! bench --site "$${SITE_NAME}" list-apps | awk '{print $$1}' | grep -Fxq "education"; then
           bench --site "$${SITE_NAME}" install-app education;
         fi &&
         bench --site "$${SITE_NAME}" set-config host_name "https://$${DOMAIN}" &&
