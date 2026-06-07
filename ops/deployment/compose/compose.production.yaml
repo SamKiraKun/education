@@ -46,15 +46,21 @@ services:
     platform: ${TARGET_PLATFORM}
     pull_policy: never
     restart: on-failure
+    environment:
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-3306}
+      REDIS_CACHE: ${REDIS_CACHE:-redis-cache:6379}
+      REDIS_QUEUE: ${REDIS_QUEUE:-redis-queue:6379}
+      SOCKETIO_PORT: ${SOCKETIO_PORT:-9000}
     entrypoint: ["bash", "-lc"]
     command: >
       ls -1 apps > sites/apps.txt &&
-      bench set-config -g db_host ${DB_HOST} &&
-      bench set-config -gp db_port ${DB_PORT} &&
-      bench set-config -g redis_cache "redis://${REDIS_CACHE}" &&
-      bench set-config -g redis_queue "redis://${REDIS_QUEUE}" &&
-      bench set-config -g redis_socketio "redis://${REDIS_QUEUE}" &&
-      bench set-config -gp socketio_port ${SOCKETIO_PORT}
+      bench set-config -g db_host "$${DB_HOST}" &&
+      bench set-config -gp db_port "$${DB_PORT}" &&
+      bench set-config -g redis_cache "redis://$${REDIS_CACHE}" &&
+      bench set-config -g redis_queue "redis://$${REDIS_QUEUE}" &&
+      bench set-config -g redis_socketio "redis://$${REDIS_QUEUE}" &&
+      bench set-config -gp socketio_port "$${SOCKETIO_PORT}"
     depends_on:
       db:
         condition: service_healthy
@@ -73,11 +79,23 @@ services:
     platform: ${TARGET_PLATFORM}
     pull_policy: never
     restart: "no"
+    environment:
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-3306}
+      REDIS_CACHE: ${REDIS_CACHE:-redis-cache:6379}
+      REDIS_QUEUE: ${REDIS_QUEUE:-redis-queue:6379}
+      SITE_NAME: ${SITE_NAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      DB_ROOT_USER: ${DB_ROOT_USER:-root}
+      DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      SITE_DB_NAME: ${SITE_DB_NAME}
+      SITE_DB_PASSWORD: ${SITE_DB_PASSWORD}
+      DOMAIN: ${DOMAIN}
     entrypoint: ["bash", "-lc"]
     command: >
-      wait-for-it "${DB_HOST}:${DB_PORT}" -t 120 &&
-      wait-for-it "${REDIS_CACHE}" -t 120 &&
-      wait-for-it "${REDIS_QUEUE}" -t 120 &&
+      wait-for-it "$${DB_HOST}:$${DB_PORT}" -t 120 &&
+      wait-for-it "$${REDIS_CACHE}" -t 120 &&
+      wait-for-it "$${REDIS_QUEUE}" -t 120 &&
       export start=$$(date +%s) &&
       until [[ -n $$(grep -hs ^ sites/common_site_config.json | jq -r ".db_host // empty") ]] &&
             [[ -n $$(grep -hs ^ sites/common_site_config.json | jq -r ".redis_cache // empty") ]] &&
@@ -90,23 +108,23 @@ services:
           exit 1;
         fi;
       done &&
-      if bench list-sites | grep -Fxq "${SITE_NAME}"; then
-        echo "Site ${SITE_NAME} already exists";
+      if bench list-sites | grep -Fxq "$${SITE_NAME}"; then
+        echo "Site $${SITE_NAME} already exists";
         exit 0;
       fi &&
-      bench new-site "${SITE_NAME}" \
+      bench new-site "$${SITE_NAME}" \
         --mariadb-user-host-login-scope='%' \
-        --admin-password="${ADMIN_PASSWORD}" \
-        --db-root-username="${DB_ROOT_USER}" \
-        --db-root-password="${DB_ROOT_PASSWORD}" \
-        --db-name "${SITE_DB_NAME}" \
-        --db-password "${SITE_DB_PASSWORD}" \
+        --admin-password="$${ADMIN_PASSWORD}" \
+        --db-root-username="$${DB_ROOT_USER}" \
+        --db-root-password="$${DB_ROOT_PASSWORD}" \
+        --db-name "$${SITE_DB_NAME}" \
+        --db-password "$${SITE_DB_PASSWORD}" \
         --install-app erpnext \
         --set-default &&
-      bench --site "${SITE_NAME}" install-app education &&
-      bench --site "${SITE_NAME}" set-config host_name "https://${DOMAIN}" &&
-      bench --site "${SITE_NAME}" enable-scheduler &&
-      bench --site "${SITE_NAME}" clear-cache
+      bench --site "$${SITE_NAME}" install-app education &&
+      bench --site "$${SITE_NAME}" set-config host_name "https://$${DOMAIN}" &&
+      bench --site "$${SITE_NAME}" enable-scheduler &&
+      bench --site "$${SITE_NAME}" clear-cache
     depends_on:
       configurator:
         condition: service_completed_successfully
@@ -121,10 +139,12 @@ services:
     platform: ${TARGET_PLATFORM}
     pull_policy: never
     restart: "no"
+    environment:
+      SITE_NAME: ${SITE_NAME}
     entrypoint: ["bash", "-lc"]
     command: >
-      bench --site "${SITE_NAME}" migrate &&
-      bench --site "${SITE_NAME}" clear-cache
+      bench --site "$${SITE_NAME}" migrate &&
+      bench --site "$${SITE_NAME}" clear-cache
     depends_on:
       configurator:
         condition: service_completed_successfully
